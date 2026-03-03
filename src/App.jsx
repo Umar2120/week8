@@ -18,6 +18,56 @@ const InfoIcon    = ()           => <svg width="14" height="14" viewBox="0 0 24 
 const StarIcon    = ()           => <svg width="11" height="11" viewBox="0 0 24 24" fill="#e50914"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>;
 const BackIcon    = ()           => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>;
 const LogoIcon    = ()           => <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>;
+const HeartIcon   = ({ s = 14, filled = false }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill={filled ? "#e50914" : "none"} stroke={filled ? "#e50914" : "currentColor"} strokeWidth="2.2">
+    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+  </svg>
+);
+const LibraryIcon = ({ s = 18 }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.5 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.41 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.4a16 16 0 0 0 5.95 5.95l1.06-.76a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+  </svg>
+);
+const TrashIcon = ({ s = 14 }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+  </svg>
+);
+
+/* ============================================================
+   FAVOURITES CONTEXT  — persisted to localStorage
+   ============================================================ */
+import { createContext, useContext } from "react";
+
+const FavCtx = createContext(null);
+
+function FavProvider({ children }) {
+  const [favs, setFavs] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("cinex_favs") || "[]"); }
+    catch { return []; }
+  });
+
+  const save = (list) => {
+    setFavs(list);
+    try { localStorage.setItem("cinex_favs", JSON.stringify(list)); } catch {}
+  };
+
+  const toggle = useCallback((movie) => {
+    setFavs(prev => {
+      const exists = prev.some(m => m.id === movie.id);
+      const next   = exists ? prev.filter(m => m.id !== movie.id) : [movie, ...prev];
+      try { localStorage.setItem("cinex_favs", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
+
+  const isFav    = useCallback((id) => favs.some(m => m.id === id), [favs]);
+  const clearAll = useCallback(() => save([]), []);
+
+  return <FavCtx.Provider value={{ favs, toggle, isFav, clearAll }}>{children}</FavCtx.Provider>;
+}
+
+const useFavs = () => useContext(FavCtx);
 
 /* ============================================================
    HELPERS
@@ -197,6 +247,22 @@ function PlatformCard({ platform }) {
   );
 }
 
+/* Heart button for the modal */
+function ModalFavBtn({ movie }) {
+  const { toggle, isFav } = useFavs();
+  const faved = isFav(movie.id);
+  return (
+    <button
+      className={`modal-btn-fav${faved ? " faved" : ""}`}
+      onClick={() => toggle(movie)}
+      title={faved ? "Remove from favourites" : "Add to favourites"}
+    >
+      <HeartIcon s={18} filled={faved}/>
+      {faved ? "Saved" : "Save"}
+    </button>
+  );
+}
+
 /* ============================================================
    MOVIE MODAL
    ============================================================ */
@@ -265,6 +331,7 @@ function MovieModal({ movie, onClose }) {
               <button className="modal-btn-trailer" onClick={onTrailer} disabled={busy}>
                 <TrailerIcon s={18}/> {busy ? "Loading…" : "Watch Trailer"}
               </button>
+              <ModalFavBtn movie={movie}/>
             </div>
           )}
 
@@ -308,7 +375,16 @@ function MovieModal({ movie, onClose }) {
    ============================================================ */
 function MovieCard({ movie, onClick }) {
   const [hovered, setHovered] = useState(false);
-  const ps = movie.poster_path ? poster(movie.poster_path) : null;
+  const { toggle, isFav }     = useFavs();
+  const faved  = isFav(movie.id);
+  const ps     = movie.poster_path ? poster(movie.poster_path) : null;
+  const [burst, setBurst] = useState(false);
+
+  const handleHeart = (e) => {
+    e.stopPropagation();
+    toggle(movie);
+    if (!faved) { setBurst(true); setTimeout(() => setBurst(false), 600); }
+  };
 
   return (
     <div className="movie-card"
@@ -321,6 +397,16 @@ function MovieCard({ movie, onClick }) {
         : <div style={{width:"100%",height:234,background:"#1a1a1a",display:"flex",alignItems:"center",
             justifyContent:"center",color:"#333",fontSize:10,padding:8,textAlign:"center"}}>{movie.title}</div>
       }
+
+      {/* Heart button — always visible if faved, else on hover */}
+      <button
+        className={`card-heart${faved ? " faved" : ""}${burst ? " burst" : ""}${hovered || faved ? " visible" : ""}`}
+        onClick={handleHeart}
+        title={faved ? "Remove from favourites" : "Add to favourites"}
+      >
+        <HeartIcon s={13} filled={faved}/>
+      </button>
+
       <div className="card-overlay">
         <p className="card-title">{movie.title}</p>
         <div className="card-meta">
@@ -658,6 +744,110 @@ function SearchBar({ onSelect }) {
 }
 
 /* ============================================================
+   FAVOURITES LIBRARY PAGE
+   ============================================================ */
+function FavouritesLibrary({ onMovieClick, onClose }) {
+  const { favs, toggle, clearAll } = useFavs();
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [sortBy, setSortBy] = useState("added"); // added | rating | year | title
+
+  const sorted = useMemo(() => {
+    const list = [...favs];
+    if (sortBy === "rating") return list.sort((a,b) => (b.vote_average||0) - (a.vote_average||0));
+    if (sortBy === "year")   return list.sort((a,b) => (b.release_date||"").localeCompare(a.release_date||""));
+    if (sortBy === "title")  return list.sort((a,b) => a.title.localeCompare(b.title));
+    return list; // "added" = insertion order (newest first, since we unshift)
+  }, [favs, sortBy]);
+
+  return (
+    <div className="fav-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="fav-panel">
+        {/* Header */}
+        <div className="fav-header">
+          <div className="fav-header-left">
+            <div className="fav-title-wrap">
+              <HeartIcon s={20} filled/>
+              <h2 className="fav-title">My Favourites</h2>
+              <span className="fav-count">{favs.length}</span>
+            </div>
+            {favs.length > 0 && (
+              <div className="fav-sort">
+                {["added","rating","year","title"].map(s => (
+                  <button key={s} className={`sort-pill${sortBy===s?" active":""}`}
+                    onClick={() => setSortBy(s)}>
+                    {s.charAt(0).toUpperCase()+s.slice(1)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="fav-header-right">
+            {favs.length > 0 && (
+              confirmClear ? (
+                <div className="fav-confirm">
+                  <span>Clear all?</span>
+                  <button className="confirm-yes" onClick={() => { clearAll(); setConfirmClear(false); }}>Yes</button>
+                  <button className="confirm-no"  onClick={() => setConfirmClear(false)}>No</button>
+                </div>
+              ) : (
+                <button className="fav-clear-btn" onClick={() => setConfirmClear(true)}>
+                  <TrashIcon s={13}/> Clear All
+                </button>
+              )
+            )}
+            <button className="fav-close" onClick={onClose}><CloseIcon s={18}/></button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="fav-body">
+          {favs.length === 0 ? (
+            <div className="fav-empty">
+              <div className="fav-empty-icon">
+                <HeartIcon s={48}/>
+              </div>
+              <h3>No favourites yet</h3>
+              <p>Click the ♥ on any movie card to add it here</p>
+            </div>
+          ) : (
+            <div className="fav-grid">
+              {sorted.map(movie => (
+                <div key={movie.id} className="fav-item">
+                  <div className="fav-item-inner" onClick={() => { onMovieClick(movie); onClose(); }}>
+                    <img
+                      src={movie.poster_path ? poster(movie.poster_path) : FALLBACK_P(movie.title)}
+                      alt={movie.title}
+                      onError={e => { e.target.src = FALLBACK_P(movie.title); }}
+                    />
+                    <div className="fav-item-overlay">
+                      <button className="fav-item-play"><PlayIcon s={18}/></button>
+                    </div>
+                  </div>
+                  <div className="fav-item-info">
+                    <p className="fav-item-title">{movie.title}</p>
+                    <div className="fav-item-meta">
+                      <span className="fav-item-score">⭐ {fmtRating(movie.vote_average)}</span>
+                      <span className="fav-item-year">{fmtYear(movie.release_date)}</span>
+                    </div>
+                  </div>
+                  <button
+                    className="fav-item-remove"
+                    onClick={e => { e.stopPropagation(); toggle(movie); }}
+                    title="Remove from favourites"
+                  >
+                    <CloseIcon s={12}/>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
    CATEGORY → ROWS MAP
    ============================================================ */
 const CAT_ROWS = {
@@ -690,12 +880,22 @@ const API_MISSING = !TMDB_API_KEY || TMDB_API_KEY === "YOUR_TMDB_API_KEY_HERE";
    APP
    ============================================================ */
 export default function App() {
+  return (
+    <FavProvider>
+      <AppInner/>
+    </FavProvider>
+  );
+}
+
+function AppInner() {
   const [activeCat,     setActiveCat]     = useState("all");
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [extraRows,     setExtraRows]     = useState([]);
   const [loadingMore,   setLoadingMore]   = useState(false);
-  const extraIdx = useRef(0);
-  const mainRef  = useRef(null);
+  const [showFavs,      setShowFavs]      = useState(false);
+  const { favs }  = useFavs();
+  const extraIdx  = useRef(0);
+  const mainRef   = useRef(null);
 
   const currentRows = useMemo(() => CAT_ROWS[activeCat] || ROWS, [activeCat]);
 
@@ -737,6 +937,14 @@ export default function App() {
               onClick={()=>handleCat(c.id)}>{c.label}</button>
           ))}
         </div>
+
+        {/* Favourites Library Button */}
+        <button className={`nav-fav-btn${showFavs ? " active" : ""}`} onClick={() => setShowFavs(v=>!v)}>
+          <HeartIcon s={16} filled={favs.length > 0}/>
+          <span>My List</span>
+          {favs.length > 0 && <span className="nav-fav-badge">{favs.length}</span>}
+        </button>
+
         <SearchBar onSelect={setSelectedMovie}/>
       </nav>
 
@@ -776,8 +984,17 @@ export default function App() {
         </div>
       </main>
 
+      {/* Movie Modal */}
       {selectedMovie && (
         <MovieModal movie={selectedMovie} onClose={()=>setSelectedMovie(null)}/>
+      )}
+
+      {/* Favourites Library Drawer */}
+      {showFavs && (
+        <FavouritesLibrary
+          onMovieClick={setSelectedMovie}
+          onClose={() => setShowFavs(false)}
+        />
       )}
     </div>
   );
