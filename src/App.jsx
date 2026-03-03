@@ -729,7 +729,7 @@ export default function App() {
       <nav className="navbar">
         <div className="logo">
           <div className="logo-icon"><LogoIcon/></div>
-          <span className="logo-text">CINEX</span>
+          <span className="logo-text">MOVIEDEKHO</span>
         </div>
         <div className="nav-cats">
           {NAV_CATEGORIES.map(c => (
