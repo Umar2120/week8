@@ -3,7 +3,7 @@
 2.ai mood matcher results.
  ![image alt](https://github.com/Umar2120/week8/blob/17694a1e6921740ff49538525fb71b46a2ef2322/05.03.2026_12.55.03_REC.png)
 3.categorised field movies suggetion.
- ![image alt](https://github.com/Umar2120/week8/blob/17694a1e6921740ff49538525fb71b46a2ef2322/05.03.2026_12.55.03_REC.png)
+ ![image alt](https://github.com/Umar2120/week8/blob/ed2b3c4f669e0bbeccf7869d1bde769d0c77d9a5/05.03.2026_12.55.43_REC.png)
 4.favourite list views
 ![image alt](https://github.com/Umar2120/week8/blob/17694a1e6921740ff49538525fb71b46a2ef2322/05.03.2026_12.55.58_REC.png)
 5. search results
