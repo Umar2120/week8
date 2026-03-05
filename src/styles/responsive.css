@@ -59,7 +59,9 @@
   }
 
   .logo-text {
-    display: none;
+    display: inline;
+    font-size: 14px;
+    letter-spacing: 1px;
   }
 
   .cat-pill {
@@ -261,6 +263,11 @@
 }
 
 @media (max-width: 560px) {
+  .logo-text {
+    font-size: 12px;
+    letter-spacing: 0.5px;
+  }
+
   .search-box {
     width: 98px;
   }
